@@ -3,11 +3,19 @@ package tests;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+import org.json.simple.parser.ParseException;
+import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
 import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
+import io.restassured.http.Headers;
+import io.restassured.http.Method;
+import io.restassured.response.Response;
+import io.restassured.specification.RequestSpecification;
 
 public class BestBuyAPITesting {
 	
@@ -19,12 +27,33 @@ public class BestBuyAPITesting {
 	
 	@Test
 	public void verifyGetProduct() {
-		RestAssured.given().when().get("/products").then().statusCode(200);
+		RestAssured.given().when().get("/products").then().log().all().statusCode(200);
+		
+	}
+	//get
+	@Test
+	public void getRequestWithQueryparam() {
+		Response response = RestAssured.given()
+				.contentType(ContentType.JSON)
+				.when()
+				.queryParam("$limit", 1)
+				.get("/products")
+				.then()
+				.log()
+				.all()
+				.extract().response();
+		
+		String headerValue = response.getHeader("Content-Type");
+		Assert.assertEquals("application/json; charset=utf-8", headerValue);
+		Assert.assertEquals(200, response.statusCode());
+		Assert.assertEquals(response.jsonPath().getString("data[0].name"),"Duracell - AAA Batteries (4-Pack)");
+		
+		
 	}
 	
 	@Test
 	public void verifyGetProductWithLimit() {
-		RestAssured.given().when().queryParam("$limit", 5).get("/products").then().log().all().statusCode(200);
+		RestAssured.given().when().queryParam("$limit",1).get("/products").then().log().all().statusCode(200);
 	}
 	
 	@Test
@@ -46,10 +75,50 @@ public class BestBuyAPITesting {
 				+ "  \"url\": \"string\",\n"
 				+ "  \"image\": \"string\"\n"
 				+ "}";
-		RestAssured.given().contentType(ContentType.JSON)
+		
+		 RestAssured.given().contentType(ContentType.JSON)
+		 
 		.body(requestPayload)
 		.when().post("/products")
-		.then().statusCode(201).log().all();
+		.then()
+		.statusCode(201).log().all();
+
+		 
+	
+	}
+	
+	@Test
+	public void verifyHeader() throws ParseException {
+		String header = "[{\r\n"
+				+ "  \"access-control-allow-origin\": \"*\",\r\n"
+				+ "  \"allow\": \"GET,POST,PUT,PATCH,DELETE\",\r\n"
+				+ "  \"connection\": \"keep-alive\",\r\n"
+				+ "  \"content-encoding\": \"gzip\",\r\n"
+				+ "  \"content-type\": \"application/json; charset=utf-8\",\r\n"
+				+ "  \"date\": \"Thu, 07 Jul 2022 04:07:14 GMT\",\r\n"
+				+ "  \"etag\": \"W/\\\"2caa-gGrPf+r5VRWlL/fiiXe6JNfANf0\\\"\",\r\n"
+				+ "  \"keep-alive\": \"timeout=5\",\r\n"
+				+ "  \"transfer-encoding\": \"chunked\",\r\n"
+				+ "  \"vary\": \"Accept, Accept-Encoding\",\r\n"
+				+ "  \"x-powered-by\": \"Express\"\r\n"
+				+ "}]"; 
+		JSONObject json = new JSONObject(header);
+		JSONArray jarray = new JSONArray(header);
+		int jarraySize = jarray.length();
+		System.out.println(jarraySize);
+		RequestSpecification httpRequest = RestAssured.given();
+		Response response = httpRequest.request(Method.GET, "/products");
+		int statusCode = response.getStatusCode();
+		Assert.assertEquals(200, statusCode);
+//		response.then().log().all();
+		
+		Headers headers = response.getHeaders();
+		int countOfHeaders = headers.asList().size();
+		Assert.assertEquals(jarraySize, countOfHeaders);
+		
+		String headerValue = response.getHeader("Content-Type");
+		Assert.assertEquals("application/json; charset=utf-8", headerValue);
+		
 	}
 	
 	@Test
